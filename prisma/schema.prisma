@@ -1,0 +1,274 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// =====================
+// ENUMS
+// =====================
+
+enum Role {
+  member
+  owner
+}
+
+enum Gender {
+  male
+  female
+}
+
+enum PackageStatus {
+  active
+  expired
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+}
+
+enum EquipmentCondition {
+  good
+  maintenance
+  broken
+}
+
+enum AnnouncementType {
+  manual
+  auto
+}
+
+enum AnnouncementTarget {
+  all
+  specific_package
+  no_package
+}
+
+enum Day {
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+  saturday
+  sunday
+}
+
+// =====================
+// MODELS
+// =====================
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  role       Role
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  member Member?
+
+  @@map("users")
+}
+
+model Member {
+  id            String   @id @default(uuid())
+  user_id       String   @unique
+  name          String
+  phone         String?
+  photo_url     String?
+  date_of_birth DateTime?
+  gender        Gender?
+  address       String?
+  created_at    DateTime @default(now())
+
+  user            User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  member_packages MemberPackage[]
+  attendances     Attendance[]
+  reviews         Review[]
+
+  @@map("members")
+}
+
+model Trainer {
+  id             String   @id @default(uuid())
+  name           String
+  photo_url      String?
+  specialization String?
+  bio            String?
+  is_active      Boolean  @default(true)
+  created_at     DateTime @default(now())
+
+  @@map("trainers")
+}
+
+model PackageCategory {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  created_at  DateTime @default(now())
+
+  packages Package[]
+
+  @@map("package_categories")
+}
+
+model Package {
+  id              String   @id @default(uuid())
+  category_id     String
+  name            String
+  description     String?
+  price           Decimal  @db.Decimal(10, 2)
+  duration_days   Int
+  include_trainer Boolean  @default(false)
+  benefits        Json?
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+
+  category        PackageCategory  @relation(fields: [category_id], references: [id])
+  member_packages MemberPackage[]
+  announcements   Announcement[]
+
+  @@map("packages")
+}
+
+model MemberPackage {
+  id         String        @id @default(uuid())
+  member_id  String
+  package_id String
+  start_date DateTime      @db.Date
+  end_date   DateTime      @db.Date
+  status     PackageStatus @default(active)
+  created_at DateTime      @default(now())
+
+  member   Member    @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  package  Package   @relation(fields: [package_id], references: [id])
+  payments Payment[]
+  reviews  Review?
+
+  @@map("member_packages")
+}
+
+model Payment {
+  id                  String        @id @default(uuid())
+  member_package_id   String
+  amount              Decimal       @db.Decimal(10, 2)
+  status              PaymentStatus @default(pending)
+  payment_method      String?
+  xendit_invoice_id   String?       @unique
+  xendit_invoice_url  String?
+  paid_at             DateTime?
+  created_at          DateTime      @default(now())
+
+  member_package MemberPackage @relation(fields: [member_package_id], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Attendance {
+  id           String    @id @default(uuid())
+  member_id    String
+  check_in_at  DateTime  @default(now())
+  check_out_at DateTime?
+  created_at   DateTime  @default(now())
+
+  member Member @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@map("attendances")
+}
+
+model Equipment {
+  id          String             @id @default(uuid())
+  name        String
+  description String?
+  category    String?
+  condition   EquipmentCondition @default(good)
+  is_active   Boolean            @default(true)
+  created_at  DateTime           @default(now())
+
+  photos EquipmentPhoto[]
+
+  @@map("equipments")
+}
+
+model EquipmentPhoto {
+  id           String   @id @default(uuid())
+  equipment_id String
+  url          String
+  order        Int      @default(0)
+  created_at   DateTime @default(now())
+
+  equipment Equipment @relation(fields: [equipment_id], references: [id], onDelete: Cascade)
+
+  @@map("equipment_photos")
+}
+
+model Review {
+  id                String   @id @default(uuid())
+  member_id         String
+  member_package_id String   @unique
+  rating            Int
+  comment           String?
+  is_published      Boolean  @default(false)
+  created_at        DateTime @default(now())
+
+  member         Member        @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  member_package MemberPackage @relation(fields: [member_package_id], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+model Announcement {
+  id          String             @id @default(uuid())
+  title       String
+  content     String
+  type        AnnouncementType   @default(manual)
+  target      AnnouncementTarget @default(all)
+  package_id  String?
+  published_at DateTime?
+  expired_at  DateTime?
+  created_at  DateTime           @default(now())
+
+  package Package? @relation(fields: [package_id], references: [id])
+
+  @@map("announcements")
+}
+
+model GymSetting {
+  id            String   @id @default(uuid())
+  gym_name      String
+  address       String?
+  phone         String?
+  email         String?
+  logo_url      String?
+  instagram_url String?
+  facebook_url  String?
+  tiktok_url    String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("gym_settings")
+}
+
+model GymSchedule {
+  id         String  @id @default(uuid())
+  day        Day
+  open_time  String
+  close_time String
+  is_closed  Boolean @default(false)
+
+  @@map("gym_schedules")
+}
