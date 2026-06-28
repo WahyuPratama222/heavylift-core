@@ -93,6 +93,7 @@ model Member {
   gender        Gender?
   address       String?
   created_at    DateTime @default(now())
+  deleted_at    DateTime?
 
   user            User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   member_packages MemberPackage[]
