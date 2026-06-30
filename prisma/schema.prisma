@@ -29,6 +29,7 @@ enum Gender {
 
 enum PackageStatus {
   active
+  pending_payment
   expired
   cancelled
 }
@@ -151,7 +152,7 @@ model MemberPackage {
   package_id String
   start_date DateTime      @db.Date
   end_date   DateTime      @db.Date
-  status     PackageStatus @default(active)
+  status     PackageStatus @default(pending_payment)
   created_at DateTime      @default(now())
 
   member   Member    @relation(fields: [member_id], references: [id], onDelete: Cascade)
